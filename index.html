@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Meme GIF Maker</title>
+  <meta name="description" content="Find a GIF, add animated text and image overlays, export a meme GIF.">
+  <meta name="theme-color" content="#15151c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Comic+Neue:wght@700&display=swap">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="icons/icon-192.png" alt=""><span>Meme GIF Maker</span></div>
+    <div class="actions">
+      <button id="btnFind" class="btn">Find GIF</button>
+      <label class="btn">Open<input id="fileSource" type="file" accept="image/gif,image/*,video/*" hidden></label>
+      <button id="btnUndo" class="icon" title="Undo (Ctrl+Z)" disabled aria-label="Undo">↶</button>
+      <button id="btnRedo" class="icon" title="Redo (Ctrl+Shift+Z)" disabled aria-label="Redo">↷</button>
+      <button id="btnSettings" class="icon" title="Settings" aria-label="Settings">⚙</button>
+      <button id="btnExport" class="btn primary" disabled>Export</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage-col">
+      <div id="stage" class="stage">
+        <div id="empty" class="empty">
+          <h1>Make a meme GIF</h1>
+          <p>Find a GIF on GIPHY or open your own GIF, image or short video.<br>You can also drop or paste one anywhere.</p>
+          <div class="row center gap">
+            <button id="emptyFind" class="btn primary">Search GIPHY</button>
+            <label class="btn">Open file<input id="fileSource2" type="file" accept="image/gif,image/*,video/*" hidden></label>
+          </div>
+          <form id="urlForm" class="url-row">
+            <input id="urlInput" type="url" placeholder="…or paste a GIPHY or .gif link" autocomplete="off">
+            <button class="btn">Load</button>
+          </form>
+        </div>
+        <canvas id="view" hidden></canvas>
+        <div id="busy" class="busy" hidden><div class="spinner"></div><span id="busyText">Loading…</span></div>
+      </div>
+      <div id="transport" class="transport" hidden>
+        <button id="btnPlay" class="icon" title="Play / pause (Space)" aria-label="Play">▶</button>
+        <button id="btnPrev" class="icon" title="Previous frame (←)" aria-label="Previous frame">‹</button>
+        <canvas id="timeline" title="Scrub. Diamonds are keyframes of the selected layer."></canvas>
+        <button id="btnNext" class="icon" title="Next frame (→)" aria-label="Next frame">›</button>
+        <span id="frameLabel" class="mono">1/1</span>
+      </div>
+      <p id="hint" class="hint" hidden>Drag to move · corner handle to scale · top handle to rotate · pinch on touch</p>
+    </section>
+
+    <aside id="panel" class="panel" hidden>
+      <section class="card">
+        <div class="card-head">
+          <h2>Layers</h2>
+          <div class="row gap">
+            <button id="addText" class="btn sm">+ Text</button>
+            <label class="btn sm">+ Image<input id="fileOverlay" type="file" accept="image/*" hidden></label>
+            <button id="addSticker" class="btn sm">+ Sticker</button>
+          </div>
+        </div>
+        <ul id="layerList" class="layers"></ul>
+        <p id="noLayers" class="muted small">No layers yet. Add text, your own image (PNG with transparency works best), or a GIPHY sticker.</p>
+      </section>
+
+      <section id="inspector" class="card" hidden>
+        <div id="textProps" class="group">
+          <h3>Text</h3>
+          <textarea id="pText" rows="2" spellcheck="false"></textarea>
+          <div class="grid2">
+            <label>Font<select id="pFont"></select></label>
+            <label>Size<input id="pSize" type="number" min="6" max="400" step="1"></label>
+            <label>Fill<input id="pFill" type="color"></label>
+            <label>Outline<input id="pStroke" type="color"></label>
+            <label>Outline width<input id="pStrokeW" type="range" min="0" max="0.25" step="0.01"></label>
+            <label>Wrap width<input id="pWrap" type="range" min="0.15" max="1" step="0.01"></label>
+            <label>Align<select id="pAlign"><option value="left">Left</option><option value="center">Center</option><option value="right">Right</option></select></label>
+            <div class="checks">
+              <label class="check"><input id="pUpper" type="checkbox"> CAPS</label>
+              <label class="check"><input id="pShadow" type="checkbox"> Shadow</label>
+            </div>
+          </div>
+        </div>
+
+        <div id="imageProps" class="group">
+          <h3>Image</h3>
+          <div class="row gap wrap">
+            <button id="btnRemoveBg" class="btn sm">Remove background</button>
+            <button id="btnRestoreImg" class="btn sm ghost">Restore original</button>
+            <label class="check"><input id="pFlip" type="checkbox"> Flip</label>
+          </div>
+          <label id="tolRow">Background tolerance<input id="pTol" type="range" min="5" max="120" step="1" value="40"></label>
+        </div>
+
+        <div class="group">
+          <h3>Position <span class="muted small" id="keyInfo"></span></h3>
+          <div class="grid2">
+            <label>X<input id="tX" type="range" step="1"></label>
+            <label>Y<input id="tY" type="range" step="1"></label>
+            <label>Scale <output id="tSv"></output><input id="tS" type="range" min="5" max="400" step="1"></label>
+            <label>Rotation <output id="tRv"></output><input id="tR" type="range" min="-180" max="180" step="1"></label>
+            <label>Opacity <output id="tOv"></output><input id="tO" type="range" min="0" max="100" step="1"></label>
+            <label>Between keys<select id="kEase"><option value="smooth">Smooth</option><option value="linear">Linear</option><option value="hold">Jump (hold)</option></select></label>
+          </div>
+          <div class="row gap wrap keys">
+            <button id="kPrev" class="icon sm" title="Previous keyframe" aria-label="Previous keyframe">◂◆</button>
+            <button id="kToggle" class="btn sm" title="Add / remove keyframe at this frame (K)">◆ Add keyframe</button>
+            <button id="kNext" class="icon sm" title="Next keyframe" aria-label="Next keyframe">◆▸</button>
+            <button id="kClear" class="btn sm ghost">Clear animation</button>
+            <button id="kTrack" class="btn sm" title="Follow whatever is under this layer through the clip">⌖ Track motion</button>
+          </div>
+          <p class="muted small">Add a keyframe, move to another frame and reposition: the layer animates between them. Track motion makes the layer follow what's underneath it (e.g. a face).</p>
+        </div>
+
+        <div class="group">
+          <h3>Timing &amp; effects</h3>
+          <div class="grid2">
+            <label>Show from frame<span class="row"><input id="vStart" type="number" min="1"><button id="vStartHere" class="btn sm ghost" title="Set to current frame">here</button></span></label>
+            <label>to frame<span class="row"><input id="vEnd" type="number" min="1"><button id="vEndHere" class="btn sm ghost" title="Set to current frame">here</button></span></label>
+            <label>Entrance<select id="aIn"></select></label>
+            <label>Duration <output id="aInDurV"></output><input id="aInDur" type="range" min="0.1" max="3" step="0.1"></label>
+            <label>Loop effect<select id="aLoop"></select></label>
+            <label>Strength <output id="aLoopAmtV"></output><input id="aLoopAmt" type="range" min="0.2" max="3" step="0.1"></label>
+            <label>Exit<select id="aOut"></select></label>
+            <label>Duration <output id="aOutDurV"></output><input id="aOutDur" type="range" min="0.1" max="3" step="0.1"></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Output</h2>
+        <div class="grid2">
+          <label>Start frame<span class="row"><input id="oStart" type="number" min="1"><button id="oStartHere" class="btn sm ghost">here</button></span></label>
+          <label>End frame<span class="row"><input id="oEnd" type="number" min="1"><button id="oEndHere" class="btn sm ghost">here</button></span></label>
+          <label>Speed <output id="oSpeedV"></output><input id="oSpeed" type="range" min="0.25" max="3" step="0.05"></label>
+          <label>Width<select id="oWidth"><option value="0">Original</option><option>640</option><option>480</option><option>400</option><option>320</option><option>240</option></select></label>
+          <label>Colours<select id="oColors"><option>256</option><option>128</option><option>64</option><option>32</option></select></label>
+          <div class="checks">
+            <label class="check"><input id="oReverse" type="checkbox"> Reverse</label>
+            <label class="check"><input id="oBoomerang" type="checkbox"> Boomerang</label>
+          </div>
+        </div>
+        <p id="oInfo" class="muted small"></p>
+      </section>
+    </aside>
+  </main>
+
+  <dialog id="dlgGiphy" class="sheet">
+    <form method="dialog" class="sheet-head">
+      <h2 id="giphyTitle">Find a GIF</h2>
+      <button class="icon" aria-label="Close">✕</button>
+    </form>
+    <form id="giphyForm" class="row gap">
+      <input id="giphyQuery" type="search" placeholder="Search GIPHY" autocomplete="off" enterkeyhint="search">
+      <div class="seg" role="tablist">
+        <button type="button" data-kind="gifs" class="on">GIFs</button>
+        <button type="button" data-kind="stickers">Stickers</button>
+      </div>
+    </form>
+    <div id="giphyMsg" class="muted small"></div>
+    <div id="giphyGrid" class="ggrid"></div>
+    <div class="row between gap sheet-foot">
+      <button id="giphyMore" class="btn sm" hidden>Load more</button>
+      <form id="giphyUrlForm" class="row gap grow">
+        <input id="giphyUrl" type="url" placeholder="Paste a GIPHY or .gif link" autocomplete="off">
+        <button class="btn sm">Load</button>
+      </form>
+      <span class="powered">Powered by GIPHY</span>
+    </div>
+  </dialog>
+
+  <dialog id="dlgSettings" class="sheet small-sheet">
+    <form method="dialog" class="sheet-head">
+      <h2>Settings</h2>
+      <button class="icon" aria-label="Close">✕</button>
+    </form>
+    <label>GIPHY API key
+      <input id="sKey" type="text" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+    </label>
+    <p class="muted small">Free: sign in at <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">developers.giphy.com</a>, Create an App → API → copy the key. It is stored only in this browser.</p>
+    <label>Content rating
+      <select id="sRating"><option value="g">G</option><option value="pg">PG</option><option value="pg-13">PG-13</option><option value="r">R</option></select>
+    </label>
+    <label>Max import size (longest side)
+      <select id="sMax"><option>480</option><option>640</option><option>720</option><option>1080</option></select>
+    </label>
+    <div class="row end gap"><button id="sSave" class="btn primary">Save</button></div>
+  </dialog>
+
+  <dialog id="dlgExport" class="sheet small-sheet">
+    <form method="dialog" class="sheet-head">
+      <h2>Export GIF</h2>
+      <button class="icon" aria-label="Close">✕</button>
+    </form>
+    <div id="exProgress"><progress id="exBar" max="1" value="0"></progress><p class="muted small" id="exText">Rendering…</p></div>
+    <div id="exResult" hidden>
+      <img id="exImg" alt="Exported GIF">
+      <p class="muted small" id="exInfo"></p>
+      <div class="row gap end">
+        <button id="exShare" class="btn" hidden>Share…</button>
+        <a id="exDownload" class="btn primary" download="meme.gif">Download</a>
+      </div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
