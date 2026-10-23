@@ -54,6 +54,13 @@
         <button id="btnNext" class="icon" title="Next frame (→)" aria-label="Next frame">›</button>
         <span id="frameLabel" class="mono">1/1</span>
       </div>
+      <div id="trimBar" class="trimbar" hidden>
+        <span class="trim-label">✂ Trim</span>
+        <button id="trimStart" class="btn sm" title="Cut everything before the current frame">⇤ Start here</button>
+        <button id="trimEnd" class="btn sm" title="Cut everything after the current frame">End here ⇥</button>
+        <button id="trimReset" class="btn sm ghost">Reset</button>
+        <span id="trimInfo" class="muted small"></span>
+      </div>
       <p id="hint" class="hint" hidden>Drag to move · corner handle to scale · top handle to rotate · pinch on touch</p>
     </section>
 
@@ -138,8 +145,6 @@
       <section class="card">
         <h2>Output</h2>
         <div class="grid2">
-          <label>Start frame<span class="row"><input id="oStart" type="number" min="1"><button id="oStartHere" class="btn sm ghost">here</button></span></label>
-          <label>End frame<span class="row"><input id="oEnd" type="number" min="1"><button id="oEndHere" class="btn sm ghost">here</button></span></label>
           <label>Speed <output id="oSpeedV"></output><input id="oSpeed" type="range" min="0.25" max="3" step="0.05"></label>
           <label>Width<select id="oWidth"><option value="0">Original</option><option>640</option><option>480</option><option>400</option><option>320</option><option>240</option></select></label>
           <label>Colours<select id="oColors"><option>256</option><option>128</option><option>64</option><option>32</option></select></label>

@@ -145,6 +145,9 @@ label > .row { gap: 6px; }
 .transport { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 #timeline { flex: 1; height: 44px; min-width: 0; touch-action: none; cursor: pointer; }
 #frameLabel { min-width: 54px; text-align: right; color: var(--muted); }
+.trimbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.trim-label { font-weight: 700; font-size: 12.5px; color: var(--accent); margin-right: 2px; }
+#trimInfo { margin-left: auto; }
 .hint { color: var(--muted); font-size: 12px; text-align: center; margin: 8px 0 0; }
 
 .panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; }

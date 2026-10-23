@@ -123,6 +123,7 @@ function setClip(clip) {
   $('#empty').hidden = true;
   $('#view').hidden = false;
   $('#transport').hidden = false;
+  $('#trimBar').hidden = false;
   $('#panel').hidden = false;
   $('#hint').hidden = false;
   $('#btnExport').disabled = false;
@@ -343,6 +344,16 @@ function drawTimeline() {
       }
     }
   }
+  // trim brackets
+  const trimmed = S.out.start > 0 || S.out.end < N - 1;
+  tctx.fillStyle = trimmed ? '#ffcc33' : '#6b6b80';
+  for (const [x, dir] of [[trimX('start', cw), 1], [trimX('end', cw), -1]]) {
+    roundRect(tctx, x - (dir > 0 ? 0 : 5), 4, 5, ch - 8, 2);
+    tctx.fill();
+    tctx.fillRect(dir > 0 ? x : x - 9, 4, 9, 3);
+    tctx.fillRect(dir > 0 ? x : x - 9, ch - 7, 9, 3);
+  }
+
   const px = tlX(S.frame, cw);
   tctx.fillStyle = '#fff';
   tctx.fillRect(px - 1, 4, 2, ch - 8);
@@ -362,13 +373,40 @@ function frameFromTimeline(e) {
   const t = (e.clientX - rect.left - TL_PAD) / (rect.width - TL_PAD * 2);
   return clamp(Math.floor(t * N), 0, N - 1);
 }
+// Outer edge of the kept range, in timeline CSS px.
+function trimX(which, w) {
+  const fw = (w - TL_PAD * 2) / S.clip.frames.length;
+  return which === 'start' ? tlX(S.out.start, w) - fw / 2 : tlX(S.out.end, w) + fw / 2;
+}
+
+function setTrim(start, end) {
+  const N = S.clip.frames.length;
+  S.out.start = clamp(start, 0, N - 1);
+  S.out.end = clamp(end, S.out.start, N - 1);
+}
+
 tl.addEventListener('pointerdown', (e) => {
   if (!S.clip) return;
   tl.setPointerCapture(e.pointerId);
   pause();
-  setFrame(frameFromTimeline(e));
-  const move = (ev) => setFrame(frameFromTimeline(ev));
+  const rect = tl.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const ds = Math.abs(x - trimX('start', rect.width));
+  const de = Math.abs(x - trimX('end', rect.width));
+  const reach = e.pointerType === 'touch' ? 16 : 9;
+  let grab = null;
+  if (Math.min(ds, de) <= reach) grab = ds < de || (ds === de && x <= trimX('start', rect.width)) ? 'start' : 'end';
+
+  const apply = (ev) => {
+    const f = frameFromTimeline(ev);
+    if (grab === 'start') setTrim(Math.min(f, S.out.end), S.out.end);
+    else if (grab === 'end') setTrim(S.out.start, Math.max(f, S.out.start));
+    setFrame(f);
+  };
+  apply(e);
+  const move = (ev) => apply(ev);
   const up = () => {
+    if (grab) commit();
     tl.removeEventListener('pointermove', move);
     tl.removeEventListener('pointerup', up);
     tl.removeEventListener('pointercancel', up);
@@ -735,9 +773,12 @@ function syncOutput() {
   if (!S.clip) return;
   const o = S.out;
   const N = S.clip.frames.length;
-  setVal('#oStart', o.start + 1);
-  setVal('#oEnd', o.end + 1);
-  $('#oStart').max = $('#oEnd').max = N;
+  const full = S.cum[N] / 1000;
+  const kept = (S.cum[o.end + 1] - S.cum[o.start]) / 1000;
+  $('#trimInfo').textContent = o.start > 0 || o.end < N - 1
+    ? `Frames ${o.start + 1}–${o.end + 1} · ${kept.toFixed(1)} s of ${full.toFixed(1)} s`
+    : `Full clip · ${full.toFixed(1)} s · drag the brackets to trim`;
+  $('#trimReset').disabled = o.start === 0 && o.end === N - 1;
   setVal('#oSpeed', o.speed);
   $('#oSpeedV').textContent = `${o.speed}×`;
   setVal('#oWidth', o.width);
@@ -919,24 +960,21 @@ function bindOut(id, apply, event = 'input') {
   });
   if (event !== 'change') el.addEventListener('change', () => commit());
 }
-bindOut('#oStart', (v) => (S.out.start = (+v || 1) - 1), 'change');
-bindOut('#oEnd', (v) => (S.out.end = (+v || 1) - 1), 'change');
 bindOut('#oSpeed', (v) => (S.out.speed = +v));
 bindOut('#oWidth', (v) => (S.out.width = +v), 'change');
 bindOut('#oColors', (v) => (S.out.colors = +v), 'change');
 bindOut('#oReverse', (v) => (S.out.reverse = v), 'change');
 bindOut('#oBoomerang', (v) => (S.out.boomerang = v), 'change');
-$('#oStartHere').onclick = () => {
-  S.out.start = S.frame;
-  if (S.out.end < S.frame) S.out.end = N1();
+const trimAction = (fn) => () => {
+  if (!S.clip) return;
+  pause();
+  fn();
   commit();
   refreshAll();
 };
-$('#oEndHere').onclick = () => {
-  S.out.end = Math.max(S.frame, S.out.start);
-  commit();
-  refreshAll();
-};
+$('#trimStart').onclick = trimAction(() => setTrim(S.frame, S.out.end < S.frame ? N1() : S.out.end));
+$('#trimEnd').onclick = trimAction(() => setTrim(Math.min(S.out.start, S.frame), S.frame));
+$('#trimReset').onclick = trimAction(() => setTrim(0, N1()));
 
 // ---------- export ----------
 

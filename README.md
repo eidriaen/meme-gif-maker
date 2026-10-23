@@ -20,7 +20,8 @@ nothing is uploaded anywhere, and it installs as an app on desktop and phone (PW
   - *Presets*: entrance (pop, fade, slide, drop, spin, typewriter), loop (shake, pulse, wiggle,
     bounce, float, spin, flash, rainbow, grow) and exit effects.
   - *Show from/to frame*, so a layer appears only during part of the clip.
-- **Output**: trim, speed, reverse, boomerang, width and colour count. On phones, **Share** sends
+- **Trim**: drag the yellow brackets on the timeline, or scrub and press *Start here* / *End here*.
+- **Output**: speed, reverse, boomerang, width and colour count. On phones, **Share** sends
   the GIF straight to another app.
 
 Shortcuts: `Space` play/pause · `←/→` step (Shift = 5) · `K` keyframe · `T` new text ·
